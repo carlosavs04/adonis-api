@@ -4,7 +4,7 @@ import Role from './Role'
 import Hash from '@ioc:Adonis/Core/Hash'
 
 export default class User extends BaseModel {
-  protected tableName = 'users'
+  public static table = 'users'
 
   @column({ isPrimary: true })
   public id: number

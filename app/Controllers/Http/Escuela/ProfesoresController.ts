@@ -1,6 +1,7 @@
 import type { HttpContextContract } from '@ioc:Adonis/Core/HttpContext'
 import { schema, rules } from '@ioc:Adonis/Core/Validator'
 import Database from '@ioc:Adonis/Lucid/Database'
+import Materia from 'App/Models/Materia'
 import Profesor from 'App/Models/Profesor'
 
 export default class ProfesoresController {
@@ -39,7 +40,7 @@ export default class ProfesoresController {
     }   
 
     public async allProfesores() {
-        const profesores = await Profesor.query().select('*')
+        const profesores = await Profesor.query().select('*').preload('materias')
         return profesores
     }
 
@@ -136,5 +137,116 @@ export default class ProfesoresController {
         })
     }
 
+    public async addMateria({ request, response, params }: HttpContextContract) {
+        await request.validate({
+            schema: schema.create({
+                materia_id: schema.number([
+                    rules.exists({ table: 'materias', column: 'id' }),
+                ]),
+            }),
+            messages: {
+                required: 'El campo {{ field }} es obligatorio.',
+                number: 'El campo {{ field }} debe ser un número entero.',
+                exists: 'El campo {{ field }} no existe en la tabla materias.',
+            }
+        })
+
+        const profesor = await Profesor.find(params.id)
+        const materia = await Materia.find(request.input('materia_id'))
+
+        if(!profesor) {
+            return response.badRequest({
+                'status': 400,
+                'mensaje': 'Los datos no fueron agregados.',
+                'error': 'No existe un profesor con este id: ' + params.id + '.',
+                'data': [],
+            })
+        }
+
+        if(!materia) {
+            return response.badRequest({
+                'status': 400,
+                'mensaje': 'Los datos no fueron agregados.',
+                'error': 'No existe una materia con este id: ' + request.input('materia_id') + '.',
+                'data': [],
+            })
+        }
+
+        const materias = await profesor.related('materias').query()
+
+        if(materias.some((materia) => materia.id === request.input('materia_id'))) {
+            return response.badRequest({
+                'status': 400,
+                'mensaje': 'Los datos no fueron agregados.',
+                'error': 'El profesor ya tiene asignada esta materia.',
+                'data': [],
+            })
+        }
+
+        await profesor.related('materias').attach([materia.id])
+
+        return response.ok({
+            'status': 200,
+            'mensaje': 'Los datos fueron agregados correctamente.',
+            'error': [],
+            'data': profesor,
+        })
+    }
+
+    public async removeMateria({ request, response, params }: HttpContextContract) {
+        await request.validate({
+            schema: schema.create({
+                materia_id: schema.number([
+                    rules.exists({ table: 'materias', column: 'id' }),
+                ]),
+            }),
+            messages: {
+                required: 'El campo {{ field }} es obligatorio.',
+                number: 'El campo {{ field }} debe ser un número entero.',
+                exists: 'El campo {{ field }} no existe en la tabla materias.',
+            }
+        })
+
+        const profesor = await Profesor.find(params.id)
+        const materia = await Materia.find(request.input('materia_id'))
+
+        if(!profesor) {
+            return response.badRequest({
+                'status': 400,
+                'mensaje': 'Los datos no fueron eliminados.',
+                'error': 'No existe un profesor con este id: ' + params.id + '.',
+                'data': [],
+            })
+        }
+
+        if(!materia) {
+            return response.badRequest({
+                'status': 400,
+                'mensaje': 'Los datos no fueron eliminados.',
+                'error': 'No existe una materia con este id: ' + request.input('materia_id') + '.',
+                'data': [],
+            })
+        }
+
+        const materias = await profesor.related('materias').query()
+
+        if(!materias.some((materia) => materia.id === request.input('materia_id'))) {
+            return response.badRequest({
+                'status': 400,
+                'mensaje': 'Los datos no fueron eliminados.',
+                'error': 'El profesor no tiene asignada esta materia.',
+                'data': [],
+            })
+        }
+
+        await profesor.related('materias').detach([materia.id])
+
+        return response.ok({
+            'status': 200,
+            'mensaje': 'Los datos fueron eliminados correctamente.',
+            'error': [],
+            'data': profesor,
+        })
+    }
 }
 
