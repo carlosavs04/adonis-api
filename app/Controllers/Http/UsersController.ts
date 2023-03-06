@@ -335,7 +335,7 @@ export default class UsersController {
     }
 
     public async isAdmin({ auth }) {
-        const user = await auth.authenticate()
+        const user = await auth.use('api').authenticate()
 
         if (user.rol_id === 1) {
             return true
@@ -345,7 +345,7 @@ export default class UsersController {
     }
 
     public async getRole({ auth, response }) {
-        const user = await auth.authenticate()
+        const user = await auth.use('api').authenticate()
 
         return response.ok({
             'rol': user.rol_id,
@@ -353,7 +353,7 @@ export default class UsersController {
     }
 
     public async getTokenUser({ auth, response }) {
-        const user = await auth.authenticate()
+        const user = await auth.use('api').authenticate()
         
         if(user.active === '1') {
             return response.ok({

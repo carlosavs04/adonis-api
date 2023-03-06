@@ -21,18 +21,15 @@
 import Route from '@ioc:Adonis/Core/Route'
 
 Route.group(() => {
-  Route.group(() => {
-    Route.post('/register', 'UsersController.register')
-    Route.get('verify/email/:id', 'UsersController.verifyEmail').as('email')
-    Route.post('verify/phone/:id', 'UsersController.verifyPhone').as('sms')
-    Route.post('/login', 'UsersController.login')
-    Route.get('/user/role', 'UsersController.getRole')
-    Route.get('/user', 'UsersController.getTokenUser')
-    Route.get('/user/admin', 'UsersController.isAdmin')
+  Route.post('/register', 'UsersController.register')
+  Route.get('verify/email/:id', 'UsersController.verifyEmail').as('email')
+  Route.post('verify/phone/:id', 'UsersController.verifyPhone').as('sms')
+  Route.post('/login', 'UsersController.login')
 
+  Route.group(() => {
     Route.group(() => {
       Route.post('/alumno', 'Escuela/AlumnosController.create')
-    })
+    }).middleware('role:1,3')
   
     Route.group(() => {
       Route.get('/logout', 'UsersController.logout')
@@ -42,7 +39,10 @@ Route.group(() => {
       Route.get('/materias', 'Escuela/MateriasController.allMaterias')
       Route.get('/profesores', 'Escuela/ProfesoresController.allProfesores')
       Route.get('/profesores/:id', 'Escuela/ProfesoresController.filterProfesores').where('id', /^[0-9]+$/)
-    })
+      Route.get('/user/role', 'UsersController.getRole')
+      Route.get('/user', 'UsersController.getTokenUser')
+      Route.get('/user/admin', 'UsersController.isAdmin')
+    }).middleware('role:1,2,3')
   
     Route.group(() => {
       Route.get('/alumno/:id', 'Escuela/AlumnosController.getAlumno').where('id', /^[0-9]+$/)
@@ -69,6 +69,6 @@ Route.group(() => {
       Route.put('/usuario/active/:id', 'UsersController.changeStatus').where('id', /^[0-9]+$/)
       Route.get('/users', 'UsersController.allUsers')
       Route.get('/user/:id', 'UsersController.getUser').where('id', /^[0-9]+$/)
-    })
-  })
+    }).middleware('role:1')
+  }).middleware(['auth', 'active'])
 }).prefix('api/v1/escuela')
