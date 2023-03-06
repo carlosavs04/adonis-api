@@ -24,13 +24,15 @@ Route.group(() => {
   Route.group(() => {
     Route.post('/register', 'UsersController.register')
     Route.get('verify/email/:id', 'UsersController.verifyEmail').as('email')
-    Route.post('/verify/phone/:id', 'UsersController.verifyPhone').as('sms')
+    Route.post('verify/phone/:id', 'UsersController.verifyPhone').as('sms')
+    Route.post('/login', 'UsersController.login')
 
     Route.group(() => {
       Route.post('/alumno', 'Escuela/AlumnosController.create')
     })
   
     Route.group(() => {
+      Route.get('/logout', 'UsersController.logout')
       Route.get('/alumnos', 'Escuela/AlumnosController.allAlumnos')
       Route.get('/alumnos/:id', 'Escuela/AlumnosController.filterAlumnos').where('id', /^[0-9]+$/)
       Route.get('/carreras', 'Escuela/CarrerasController.allCarreras')
@@ -62,4 +64,4 @@ Route.group(() => {
       Route.get('/roles', 'RolesController.getRoles')
     })
   })
-}).prefix('/api/v1/escuela')
+}).prefix('api/v1/escuela')

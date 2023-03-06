@@ -4,6 +4,9 @@ import User from 'App/Models/User'
 import Hash from '@ioc:Adonis/Core/Hash'
 import Route from '@ioc:Adonis/Core/Route'
 import Mail from '@ioc:Adonis/Addons/Mail'
+import View from '@ioc:Adonis/Core/View'
+const { Vonage } = require('@vonage/server-sdk')
+const local = "http://127.0.0.1:3333"
 
 export default class UsersController {
     public async register ({ request, response }: HttpContextContract) {
@@ -53,8 +56,8 @@ export default class UsersController {
             telefono: request.input('telefono'),
         })
 
-        const confirmEmailUrl = Route.makeSignedUrl('email', { id: user.id }, { expiresIn: '15m' })
-        const confirmPhoneUrl = Route.makeSignedUrl('sms', { id: user.id }, { expiresIn: '30m' })
+        const confirmEmailUrl = local + Route.makeSignedUrl('email', { id: user.id }, { expiresIn: '15m' })
+        const confirmPhoneUrl = local + Route.makeSignedUrl('sms', { id: user.id }, { expiresIn: '30m' })
 
         await Mail.send((message) => {
             message 
@@ -73,17 +76,135 @@ export default class UsersController {
         })
     }
 
-    public async verifyEmail({ request, response }: HttpContextContract) {
+    public async verifyEmail({ request, response, params }: HttpContextContract) {
         if (!request.hasValidSignature()) {
             response.abort('El enlace de confirmación ha expirado.', 401)
         }
 
-        const user = await User.findOrFail(request.input('id'))
+        const user = await User.findOrFail(params.id)
         const randomNumber = Math.floor(Math.random() * 9000) + 1000
 
         user.codigo = randomNumber
         await user.save()
+        this.sendSMS(randomNumber)
+    
+        return View.render('emails/sms')
+    }
 
+    public async sendSMS(codigo: number) {
+        const vonage = new Vonage({
+            apiKey: "e8c2bf36",
+            apiSecret: "P9LRDR5wY8lbhIqy"
+          })
 
+        const from = "Escuela APIs"
+        const to = "528713321257"
+        const text = 'Tu código de verificación es: ' + codigo + '.'
+          
+        vonage.sms.send({to, from, text})
+            .then(resp => { console.log('Message sent successfully'); console.log(resp); })
+            .catch(err => { console.log('There was an error sending the messages.'); console.error(err); });          
+    }
+
+    public async verifyPhone({ request, response, params }: HttpContextContract) {
+        if (!request.hasValidSignature()) {
+            response.abort('El enlace de confirmación ha expirado.', 401)
+        }
+
+        await request.validate({
+            schema: schema.create({
+                codigo: schema.number(),
+            }),
+            messages: {
+                required: 'El campo {{ field }} es obligatorio.',
+                number: 'El campo {{ field }} debe ser un número entero.',
+            }
+        })
+
+        const user = await User.findOrFail(params.id)
+
+        if (user.codigo === request.input('codigo')) {
+            user.active = '1'
+            await user.save()
+
+            return response.ok({
+                'status': 200,
+                'mensaje': 'Cuenta verificada correctamente.',
+                'error': [],
+                'data': user,
+            })
+        } else {
+            return response.badRequest({
+                'status': 400,
+                'mensaje': 'El código de verificación es incorrecto.',
+                'error': [],
+                'data': [],
+            })
+        }
+    }
+
+    public async login({ request, response, auth }: HttpContextContract) {
+        await request.validate({
+            schema: schema.create({
+                email: schema.string([
+                    rules.email(),
+                    rules.trim(),
+                ]),
+                password: schema.string([
+                    rules.minLength(8),
+                    rules.maxLength(20),
+                    rules.trim(),
+                ]),
+            }),
+            messages: {
+                required: 'El campo {{ field }} es obligatorio.',
+                string: 'El campo {{ field }} debe ser una cadena de caracteres.',
+                trim: 'El campo {{ field }} no debe contener espacios en blanco.',
+                email: 'El campo {{ field }} debe ser un correo electrónico válido.',
+                minLength: 'El campo {{ field }} debe tener un mínimo de {{ options.minLength }} caracteres.',
+                maxLength: 'El campo {{ field }} debe tener un máximo de {{ options.maxLength }} caracteres.',
+            }
+        })
+
+        const user = await User.query().where('email', request.input('email')).where('active', '1').first()
+
+        if (!user) {
+            return response.badRequest({
+                'status': 400,
+                'mensaje': 'No existe ningún usuario con este correo o su cuenta está desactivada.',
+                'error': [],
+                'data': [],
+            })
+        }
+
+        if(!await Hash.verify(user.password, request.input('password'))) {
+            return response.badRequest({
+                'status': 400,
+                'mensaje': 'Credenciales de usuario incorrectas.',
+                'error': [],
+                'data': [],
+            })
+        }
+
+        const token = await auth.use('api').generate(user)
+
+        return response.ok({
+            'status': 200,
+            'mensaje': 'Sesión iniciada correctamente.',
+            'error': [],
+            'data': user,
+            'token': token,
+        })
+    }
+
+    public async logout({ auth, response }: HttpContextContract) {
+        await auth.use('api').revoke()
+
+        return response.ok({
+            'status': 200,
+            'mensaje': 'Sesión cerrada correctamente.',
+            'error': [],
+            'data': [],
+        })
     }
 }

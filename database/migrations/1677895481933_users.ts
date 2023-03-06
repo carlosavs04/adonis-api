@@ -15,6 +15,7 @@ export default class extends BaseSchema {
       table.enum('active', ['0', '1']).defaultTo('0')
       table.integer('rol_id').unsigned().defaultTo(2).references('roles.id')
       table.integer('codigo').nullable()
+      table.string('remember_me_token').nullable()
       table.timestamps(true, true)
     })
   }
