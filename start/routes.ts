@@ -26,6 +26,9 @@ Route.group(() => {
     Route.get('verify/email/:id', 'UsersController.verifyEmail').as('email')
     Route.post('verify/phone/:id', 'UsersController.verifyPhone').as('sms')
     Route.post('/login', 'UsersController.login')
+    Route.get('/user/role', 'UsersController.getRole')
+    Route.get('/user', 'UsersController.getTokenUser')
+    Route.get('/user/admin', 'UsersController.isAdmin')
 
     Route.group(() => {
       Route.post('/alumno', 'Escuela/AlumnosController.create')
@@ -62,6 +65,10 @@ Route.group(() => {
       Route.post('/profesor/add/materia/:id', 'Escuela/ProfesoresController.addMateria').where('id', /^[0-9]+$/)
       Route.post('/delete/profesor/materia/:id', 'Escuela/ProfesoresController.removeMateria').where('id', /^[0-9]+$/)
       Route.get('/roles', 'RolesController.getRoles')
+      Route.put('/rol/usuario/:id', 'UsersController.changeRol').where('id', /^[0-9]+$/)
+      Route.put('/usuario/active/:id', 'UsersController.changeStatus').where('id', /^[0-9]+$/)
+      Route.get('/users', 'UsersController.allUsers')
+      Route.get('/user/:id', 'UsersController.getUser').where('id', /^[0-9]+$/)
     })
   })
 }).prefix('api/v1/escuela')

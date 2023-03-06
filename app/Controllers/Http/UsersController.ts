@@ -5,6 +5,7 @@ import Hash from '@ioc:Adonis/Core/Hash'
 import Route from '@ioc:Adonis/Core/Route'
 import Mail from '@ioc:Adonis/Addons/Mail'
 import View from '@ioc:Adonis/Core/View'
+import Database from '@ioc:Adonis/Lucid/Database'
 const { Vonage } = require('@vonage/server-sdk')
 const local = "http://127.0.0.1:3333"
 
@@ -206,5 +207,158 @@ export default class UsersController {
             'error': [],
             'data': [],
         })
+    }
+
+    public async changeRol({ request, response, params }) {
+        await request.validate({
+            schema: schema.create({
+                rol: schema.number(),
+            }),
+            messages: {
+                required: 'El campo {{ field }} es obligatorio.',
+                number: 'El campo {{ field }} debe ser un número entero.',
+            }
+        })
+
+        const user = await User.find(params.id)
+
+        if(!user) {
+            return response.badRequest({
+                'status': 400,
+                'mensaje': 'No existe ningún usuario con el id: ' + params.id + '.',
+                'error': [],
+                'data': [],
+            })
+        }
+
+        if (user.rol_id === request.input('rol')) {
+            return response.badRequest({
+                'status': 400,
+                'mensaje': 'El usuario ya tiene asignado este rol.',
+                'error': [],
+                'data': [],
+            })
+        }
+
+        user.rol_id = request.input('rol')
+        await user.save()
+
+        await Mail.send((message) => {
+            message 
+                .from('escuela@api.com')
+                .to(user.email)
+                .subject('Tu rol ha cambiado')
+                .htmlView('emails/rol', { rol: user.rol_id, name: user.name })
+        })
+
+        return response.ok({
+            'status': 200,
+            'mensaje': 'Rol cambiado exitosamente.',
+            'error': [],
+            'data': user,
+        })
+    }
+
+    public async changeStatus({ response, params }) {
+        const user = await User.find(params.id)
+
+        if(!user) {
+            return response.badRequest({
+                'status': 400,
+                'mensaje': 'No existe ningún usuario con el id: ' + params.id + '.',
+                'error': [],
+                'data': [],
+            })
+        }
+
+        if (user.active == '1') {
+            user.active = '0'
+            await user.save()
+
+            await Mail.send((message) => {
+                message 
+                    .from('escuela@api.com')
+                    .to(user.email)
+                    .subject('Tu cuenta ha sido desactivada')
+                    .htmlView('emails/desactivate', { name: user.name })
+            })
+
+            return response.ok({
+                'status': 200,
+                'mensaje': 'Usuario desactivado exitosamente.',
+                'error': [],
+                'data': user,
+            })
+        } else if (user.active == '0') {
+            user.active = '1'
+            await user.save()
+
+            await Mail.send((message) => {
+                message 
+                    .from('escuela@api.com')
+                    .to(user.email)
+                    .subject('Tu cuenta ha sido reactivada')
+                    .htmlView('emails/activate', { name: user.name })
+            })
+
+            return response.ok({
+                'status': 200,
+                'mensaje': 'Usuario activado exitosamente.',
+                'error': [],
+                'data': user,
+            })
+        }
+    }
+
+    public async allUsers() {
+        const users = await Database
+            .from('users')
+            .join('roles', 'users.rol_id', 'roles.id')
+            .select('users.*', 'roles.name as rol')
+
+        return users
+    }
+
+    public async getUser({ params, response }) {
+        const user = await User.find(params.id)
+
+        if(!user) {
+            return response.badRequest({
+                'status': 400,
+                'mensaje': 'No existe ningún usuario con el id: ' + params.id + '.',
+                'error': [],
+                'data': [],
+            })
+        }
+
+        return user
+    }
+
+    public async isAdmin({ auth }) {
+        const user = await auth.authenticate()
+
+        if (user.rol_id === 1) {
+            return true
+        } else {
+            return false
+        }
+    }
+
+    public async getRole({ auth, response }) {
+        const user = await auth.authenticate()
+
+        return response.ok({
+            'rol': user.rol_id,
+        })
+    }
+
+    public async getTokenUser({ auth, response }) {
+        const user = await auth.authenticate()
+        
+        if(user.active === '1') {
+            return response.ok({
+                'data': user,
+            })
+        }
     }
 }
