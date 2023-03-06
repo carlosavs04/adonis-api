@@ -21,8 +21,11 @@
 import Route from '@ioc:Adonis/Core/Route'
 
 Route.group(() => {
-  
   Route.group(() => {
+    Route.post('/register', 'UsersController.register')
+    Route.get('verify/email/:id', 'UsersController.verifyEmail').as('email')
+    Route.post('/verify/phone/:id', 'UsersController.verifyPhone').as('sms')
+
     Route.group(() => {
       Route.post('/alumno', 'Escuela/AlumnosController.create')
     })
@@ -56,6 +59,7 @@ Route.group(() => {
       Route.post('/delete/materia/profesor/:id', 'Escuela/MateriasController.removeProfesor').where('id', /^[0-9]+$/)
       Route.post('/profesor/add/materia/:id', 'Escuela/ProfesoresController.addMateria').where('id', /^[0-9]+$/)
       Route.post('/delete/profesor/materia/:id', 'Escuela/ProfesoresController.removeMateria').where('id', /^[0-9]+$/)
+      Route.get('/roles', 'RolesController.getRoles')
     })
   })
 }).prefix('/api/v1/escuela')

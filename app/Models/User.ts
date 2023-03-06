@@ -1,7 +1,6 @@
 import { DateTime } from 'luxon'
-import { BaseModel, column, belongsTo, BelongsTo, beforeCreate } from '@ioc:Adonis/Lucid/Orm'
+import { BaseModel, column, belongsTo, BelongsTo } from '@ioc:Adonis/Lucid/Orm'
 import Role from './Role'
-import Hash from '@ioc:Adonis/Core/Hash'
 
 export default class User extends BaseModel {
   public static table = 'users'
@@ -44,9 +43,4 @@ export default class User extends BaseModel {
 
   @belongsTo(() => Role)
   public rol: BelongsTo<typeof Role>
-
-  @beforeCreate()
-  public static async hashPassword(user: User) {
-    await Hash.make(user.password)
-  }
 }
