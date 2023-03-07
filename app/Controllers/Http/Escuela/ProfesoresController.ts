@@ -174,7 +174,7 @@ export default class ProfesoresController {
 
         const materias = await profesor.related('materias').query()
 
-        if(materias.some((materia) => materia.id === request.input('materia_id'))) {
+        if(materias.some((materia) => materia.id === Number(request.input('materia_id')))) {
             return response.badRequest({
                 'status': 400,
                 'mensaje': 'Los datos no fueron agregados.',
