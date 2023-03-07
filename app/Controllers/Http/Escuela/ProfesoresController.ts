@@ -56,7 +56,7 @@ export default class ProfesoresController {
     }
 
     public async getProfesor({ params, response }: HttpContextContract) {
-        const profesor = await Profesor.find(params.id)
+        const profesor = await Profesor.query().select('*').preload('materias').where('id', params.id).first()
 
         if(!profesor) {
             return response.notFound({
@@ -194,21 +194,8 @@ export default class ProfesoresController {
     }
 
     public async removeMateria({ request, response, params }: HttpContextContract) {
-        await request.validate({
-            schema: schema.create({
-                materia_id: schema.number([
-                    rules.exists({ table: 'materias', column: 'id' }),
-                ]),
-            }),
-            messages: {
-                required: 'El campo {{ field }} es obligatorio.',
-                number: 'El campo {{ field }} debe ser un número entero.',
-                exists: 'El campo {{ field }} no existe en la tabla materias.',
-            }
-        })
-
         const profesor = await Profesor.find(params.id)
-        const materia = await Materia.find(request.input('materia_id'))
+        const materiasId = request.input('materia')
 
         if(!profesor) {
             return response.badRequest({
@@ -219,27 +206,20 @@ export default class ProfesoresController {
             })
         }
 
-        if(!materia) {
-            return response.badRequest({
-                'status': 400,
-                'mensaje': 'Los datos no fueron eliminados.',
-                'error': 'No existe una materia con este id: ' + request.input('materia_id') + '.',
-                'data': [],
-            })
+        for(const materiaId of materiasId) {
+            const materia = await Materia.find(materiaId)
+
+            if(!materia) {
+                return response.badRequest({
+                    'status': 400,
+                    'mensaje': 'Los datos no fueron eliminados.',
+                    'error': 'No existe una materia con este id: ' + materiaId + '.',
+                    'data': [],
+                })
+            }
+            
+            await profesor.related('materias').detach([materia.id])
         }
-
-        const materias = await profesor.related('materias').query()
-
-        if(!materias.some((materia) => materia.id === request.input('materia_id'))) {
-            return response.badRequest({
-                'status': 400,
-                'mensaje': 'Los datos no fueron eliminados.',
-                'error': 'El profesor no tiene asignada esta materia.',
-                'data': [],
-            })
-        }
-
-        await profesor.related('materias').detach([materia.id])
 
         return response.ok({
             'status': 200,
