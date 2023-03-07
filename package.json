@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "node ace serve --watch",
+    "start": "node ace serve --watch",
     "build": "node ace build --production",
-    "start": "node server.js"
+    "compile": "postcss public/css/tailwind.css -o public/css/output.css"
   },
   "devDependencies": {
     "@adonisjs/assembler": "^5.9.5",
@@ -34,6 +34,7 @@
     "luxon": "^3.2.1",
     "mysql2": "^3.1.2",
     "phc-bcrypt": "^1.0.8",
+    "postcss-cli": "^10.1.0",
     "proxy-addr": "^2.0.7",
     "reflect-metadata": "^0.1.13",
     "source-map-support": "^0.5.21"

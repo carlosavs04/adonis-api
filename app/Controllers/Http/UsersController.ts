@@ -124,7 +124,7 @@ export default class UsersController {
 
         const user = await User.findOrFail(params.id)
 
-        if (user.codigo === request.input('codigo')) {
+        if (user.codigo === Number(request.input('codigo'))) {
             user.active = '1'
             await user.save()
 
