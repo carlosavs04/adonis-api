@@ -61,7 +61,7 @@ export default class UsersController {
         const confirmPhoneUrl = local + Route.makeSignedUrl('sms', { id: user.id }, { expiresIn: '30m' })
 
         await Mail.send((message) => {
-            message 
+            message
                 .from('escuela@api.com')
                 .to(user.email)
                 .subject('¡Bienvenido a la escuela!')
@@ -88,7 +88,7 @@ export default class UsersController {
         user.codigo = randomNumber
         await user.save()
         this.sendSMS(randomNumber)
-    
+
         return View.render('emails/sms')
     }
 
@@ -101,10 +101,10 @@ export default class UsersController {
         const from = "Escuela APIs"
         const to = "528713321257"
         const text = 'Tu código de verificación es: ' + codigo + '.'
-          
+
         vonage.sms.send({to, from, text})
             .then(resp => { console.log('Message sent successfully'); console.log(resp); })
-            .catch(err => { console.log('There was an error sending the messages.'); console.error(err); });          
+            .catch(err => { console.log('There was an error sending the messages.'); console.error(err); });
     }
 
     public async verifyPhone({ request, response, params }: HttpContextContract) {
@@ -194,7 +194,7 @@ export default class UsersController {
             'mensaje': 'Sesión iniciada correctamente.',
             'error': [],
             'data': user,
-            'token': token,
+            'token': token.token,
         })
     }
 
@@ -244,7 +244,7 @@ export default class UsersController {
         await user.save()
 
         await Mail.send((message) => {
-            message 
+            message
                 .from('escuela@api.com')
                 .to(user.email)
                 .subject('Tu rol ha cambiado')
@@ -276,7 +276,7 @@ export default class UsersController {
             await user.save()
 
             await Mail.send((message) => {
-                message 
+                message
                     .from('escuela@api.com')
                     .to(user.email)
                     .subject('Tu cuenta ha sido desactivada')
@@ -294,7 +294,7 @@ export default class UsersController {
             await user.save()
 
             await Mail.send((message) => {
-                message 
+                message
                     .from('escuela@api.com')
                     .to(user.email)
                     .subject('Tu cuenta ha sido reactivada')
@@ -354,7 +354,7 @@ export default class UsersController {
 
     public async getTokenUser({ auth, response }) {
         const user = await auth.use('api').authenticate()
-        
+
         if(user.active === '1') {
             return response.ok({
                 'data': user,

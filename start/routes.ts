@@ -30,7 +30,7 @@ Route.group(() => {
     Route.group(() => {
       Route.post('/alumno', 'Escuela/AlumnosController.create')
     }).middleware('role:1,3')
-  
+
     Route.group(() => {
       Route.get('/logout', 'UsersController.logout')
       Route.get('/alumnos', 'Escuela/AlumnosController.allAlumnos')
@@ -43,7 +43,7 @@ Route.group(() => {
       Route.get('/user', 'UsersController.getTokenUser')
       Route.get('/user/admin', 'UsersController.isAdmin')
     }).middleware('role:1,2,3')
-  
+
     Route.group(() => {
       Route.get('/alumno/:id', 'Escuela/AlumnosController.getAlumno').where('id', /^[0-9]+$/)
       Route.put('/alumno/:id', 'Escuela/AlumnosController.update').where('id', /^[0-9]+$/)
