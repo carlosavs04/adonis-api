@@ -10,11 +10,16 @@ import { Queue, Worker, Job } from 'bullmq'
 
 const { Vonage } = require('@vonage/server-sdk')
 const local = "http://127.0.0.1:3333"
-const emailQueue = new Queue('email')
+const welcomeMailQueue = new Queue('welcome')
 const smsQueue = new Queue('sms')
+const roleMailQueue = new Queue('role')
+const statusMailQueue = new Queue('status')
 
-const welcomeWorker = new Worker('welcome.mail', async (job: Job) => {
-    const { email, name, url } = job.data
+const welcomeWorker = new Worker('welcome', async (job: Job) => {
+    const url = job.data.url
+    const name = job.data.name
+    const email = job.data.email
+
     await Mail.send((message) => {
         message
             .from('escuela@api.com')
@@ -29,7 +34,7 @@ welcomeWorker.on('error', (error) => {
 })
 
 const smsWorker = new Worker('sms', async (job: Job) => {
-    const { code } = job.data
+    const  code  = job.data.code
     const vonage = new Vonage({
         apiKey: "e8c2bf36",
         apiSecret: "P9LRDR5wY8lbhIqy"
@@ -49,7 +54,7 @@ smsWorker.on('error', (error) => {
     console.log(error)
 })
 
-const roleWorker = new Worker('rol.mail', async (job: Job) => {
+const roleWorker = new Worker('role', async (job: Job) => {
     const { email, name, rol } = job.data
 
     await Mail.send((message) => {
@@ -65,7 +70,7 @@ roleWorker.on('error', (error) => {
     console.log(error)
 })
 
-const desactivateWorker = new Worker('desactivate.mail', async (job: Job) => {
+const desactivateWorker = new Worker('status', async (job: Job) => {
     const { email, name } = job.data
 
     await Mail.send((message) => {
@@ -79,7 +84,7 @@ const desactivateWorker = new Worker('desactivate.mail', async (job: Job) => {
 
 desactivateWorker.on('error', (error) => {
     console.log(error)
-})
+})  
 
 const activateWorker = new Worker('activate.mail', async (job: Job) => {
     const { email, name } = job.data
@@ -96,7 +101,7 @@ activateWorker.on('error', (error) => {
     console.log(error)
 })
 
-export class UsersController {
+export default class UsersController {
     public async register ({ request, response }: HttpContextContract) {
         await request.validate({
             schema: schema.create({
@@ -147,7 +152,7 @@ export class UsersController {
         const confirmEmailUrl = local + Route.makeSignedUrl('email', { id: user.id }, { expiresIn: '15m' })
         const confirmPhoneUrl = local + Route.makeSignedUrl('sms', { id: user.id }, { expiresIn: '30m' })
 
-        await emailQueue.add('welcome.mail', { url: confirmEmailUrl, name: user.name, email: user.email }, { delay: 15000 })
+        await welcomeMailQueue.add('welcome', { url: confirmEmailUrl, name: user.name, email: user.email }, { delay: 15000 })
 
         return response.created({
             'status': 201,
@@ -309,8 +314,7 @@ export class UsersController {
 
         user.rol_id = request.input('rol')
         await user.save()
-
-        emailQueue.add('rol.mail', { rol: user.rol_id, name: user.name, email: user.email }, { delay: 15000 })
+        roleMailQueue.add('role', { rol: user.rol_id, name: user.name, email: user.email }, { delay: 15000 })
 
         return response.ok({
             'status': 200,
@@ -336,7 +340,7 @@ export class UsersController {
             user.active = '0'
             await user.save()
 
-            emailQueue.add('desactivate.mail', { name: user.name, email: user.email }, { delay: 15000 })
+            statusMailQueue.add('status', { name: user.name, email: user.email }, { delay: 15000 })
 
             return response.ok({
                 'status': 200,
@@ -348,7 +352,7 @@ export class UsersController {
             user.active = '1'
             await user.save()
 
-            emailQueue.add('activate.mail', { name: user.name, email: user.email }, { delay: 15000 })
+            statusMailQueue.add('status', { name: user.name, email: user.email }, { delay: 15000 })
 
             return response.ok({
                 'status': 200,
@@ -415,5 +419,7 @@ export class UsersController {
         welcomeWorker.run()
         smsWorker.run()
         roleWorker.run()
+        activateWorker.run()
+        desactivateWorker.run()
     }
 }

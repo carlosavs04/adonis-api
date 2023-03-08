@@ -69,6 +69,7 @@ Route.group(() => {
       Route.put('/usuario/active/:id', 'UsersController.changeStatus').where('id', /^[0-9]+$/)
       Route.get('/users', 'UsersController.allUsers')
       Route.get('/user/:id', 'UsersController.getUser').where('id', /^[0-9]+$/)
+      Route.get('/works', 'UsersController.runWorks')
     }).middleware('role:1')
   }).middleware(['auth', 'active'])
 }).prefix('api/v1/escuela')

@@ -1,5 +1,5 @@
 import { BaseCommand } from '@adonisjs/core/build/standalone'
-import { UsersController } from 'App/Controllers/Http/UsersController'
+
 export default class Jobs extends BaseCommand {
   /**
    * Command name is used to run the command
@@ -28,7 +28,6 @@ export default class Jobs extends BaseCommand {
   }
 
   public async run() {
-    const usersController = new UsersController()
-    await usersController.runWorks()
+    
   }
 }
