@@ -13,7 +13,9 @@ const local = "http://127.0.0.1:3333"
 const welcomeMailQueue = new Queue('welcome')
 const smsQueue = new Queue('sms')
 const roleMailQueue = new Queue('role')
-const statusMailQueue = new Queue('status')
+const desactivateMailQueue = new Queue('desactivate')
+const activateMailQueue = new Queue('activate')
+
 
 const welcomeWorker = new Worker('welcome', async (job: Job) => {
     const url = job.data.url
@@ -70,7 +72,7 @@ roleWorker.on('error', (error) => {
     console.log(error)
 })
 
-const desactivateWorker = new Worker('status', async (job: Job) => {
+const desactivateWorker = new Worker('desactivate', async (job: Job) => {
     const { email, name } = job.data
 
     await Mail.send((message) => {
@@ -86,7 +88,7 @@ desactivateWorker.on('error', (error) => {
     console.log(error)
 })  
 
-const activateWorker = new Worker('activate.mail', async (job: Job) => {
+const activateWorker = new Worker('activate', async (job: Job) => {
     const { email, name } = job.data
     await Mail.send((message) => {
         message
@@ -340,7 +342,7 @@ export default class UsersController {
             user.active = '0'
             await user.save()
 
-            statusMailQueue.add('status', { name: user.name, email: user.email }, { delay: 15000 })
+            desactivateMailQueue.add('desactivate', { name: user.name, email: user.email }, { delay: 15000 })
 
             return response.ok({
                 'status': 200,
@@ -352,7 +354,7 @@ export default class UsersController {
             user.active = '1'
             await user.save()
 
-            statusMailQueue.add('status', { name: user.name, email: user.email }, { delay: 15000 })
+            activateMailQueue.add('activate', { name: user.name, email: user.email }, { delay: 15000 })
 
             return response.ok({
                 'status': 200,

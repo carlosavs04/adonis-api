@@ -1,4 +1,6 @@
 import { BaseCommand } from '@adonisjs/core/build/standalone'
+const axios = require('axios');
+const local = 'http://127.0.0.1:3333/api/v1/escuela/works';
 
 export default class Jobs extends BaseCommand {
   /**
@@ -28,6 +30,6 @@ export default class Jobs extends BaseCommand {
   }
 
   public async run() {
-    
+    await axios.get(local)
   }
 }
