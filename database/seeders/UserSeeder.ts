@@ -19,7 +19,7 @@ export default class extends BaseSeeder {
         name: 'Carlos',
         ap_paterno: 'Avalos',
         ap_materno: 'Soto',
-        email: 'carlos.avalos0409@gmail.com',
+        email: 'carlos.avalos0409@outlook.com',
         telefono: '8713321257',
         password: await Hash.make('Prueba11'),
         active: '1',

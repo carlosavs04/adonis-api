@@ -6,10 +6,97 @@ import Route from '@ioc:Adonis/Core/Route'
 import Mail from '@ioc:Adonis/Addons/Mail'
 import View from '@ioc:Adonis/Core/View'
 import Database from '@ioc:Adonis/Lucid/Database'
+import { Queue, Worker, Job } from 'bullmq'
+
 const { Vonage } = require('@vonage/server-sdk')
 const local = "http://127.0.0.1:3333"
+const emailQueue = new Queue('email')
+const smsQueue = new Queue('sms')
 
-export default class UsersController {
+const welcomeWorker = new Worker('welcome.mail', async (job: Job) => {
+    const { email, name, url } = job.data
+    await Mail.send((message) => {
+        message
+            .from('escuela@api.com')
+            .to(email)
+            .subject('¡Bienvenido a la escuela!')
+            .htmlView('emails/welcome', { name: name, url: url })
+    })
+}, { autorun: false })
+
+welcomeWorker.on('error', (error) => {
+    console.log(error)
+})
+
+const smsWorker = new Worker('sms', async (job: Job) => {
+    const { code } = job.data
+    const vonage = new Vonage({
+        apiKey: "e8c2bf36",
+        apiSecret: "P9LRDR5wY8lbhIqy"
+      })
+
+    const from = "Escuela APIs"
+    const to = "528713321257"
+    const text = 'Tu código de verificación es: ' + code + '.'
+
+    vonage.sms.send({to, from, text})
+        .then(resp => { console.log('Message sent successfully'); console.log(resp); })
+        .catch(err => { console.log('There was an error sending the messages.'); console.error(err); });
+   
+}, { autorun: false })
+
+smsWorker.on('error', (error) => {
+    console.log(error)
+})
+
+const roleWorker = new Worker('rol.mail', async (job: Job) => {
+    const { email, name, rol } = job.data
+
+    await Mail.send((message) => {
+        message
+            .from('escuela@api.com')
+            .to(email)
+            .subject('Tu rol ha cambiado')
+            .htmlView('emails/rol', { rol: rol, name: name })
+    })
+}, { autorun: false })
+
+roleWorker.on('error', (error) => {
+    console.log(error)
+})
+
+const desactivateWorker = new Worker('desactivate.mail', async (job: Job) => {
+    const { email, name } = job.data
+
+    await Mail.send((message) => {
+        message
+            .from('escuela@api.com')
+            .to(email)
+            .subject('Tu cuenta ha sido desactivada')
+            .htmlView('emails/desactivate', { name: name })
+    })
+}, { autorun: false })
+
+desactivateWorker.on('error', (error) => {
+    console.log(error)
+})
+
+const activateWorker = new Worker('activate.mail', async (job: Job) => {
+    const { email, name } = job.data
+    await Mail.send((message) => {
+        message
+            .from('escuela@api.com')
+            .to(email)
+            .subject('Tu cuenta ha sido reactivada')
+            .htmlView('emails/activate', { name: name })
+    })
+}, { autorun: false })
+
+activateWorker.on('error', (error) => {
+    console.log(error)
+})
+
+export class UsersController {
     public async register ({ request, response }: HttpContextContract) {
         await request.validate({
             schema: schema.create({
@@ -60,13 +147,7 @@ export default class UsersController {
         const confirmEmailUrl = local + Route.makeSignedUrl('email', { id: user.id }, { expiresIn: '15m' })
         const confirmPhoneUrl = local + Route.makeSignedUrl('sms', { id: user.id }, { expiresIn: '30m' })
 
-        await Mail.send((message) => {
-            message
-                .from('escuela@api.com')
-                .to(user.email)
-                .subject('¡Bienvenido a la escuela!')
-                .htmlView('emails/welcome', { url: confirmEmailUrl, name: user.name })
-        })
+        await emailQueue.add('welcome.mail', { url: confirmEmailUrl, name: user.name, email: user.email }, { delay: 15000 })
 
         return response.created({
             'status': 201,
@@ -85,26 +166,12 @@ export default class UsersController {
         const user = await User.findOrFail(params.id)
         const randomNumber = Math.floor(Math.random() * 9000) + 1000
 
+        await smsQueue.add('sms', { code: randomNumber }, { delay: 15000 })
+
         user.codigo = randomNumber
         await user.save()
-        this.sendSMS(randomNumber)
 
         return View.render('emails/sms')
-    }
-
-    public async sendSMS(codigo: number) {
-        const vonage = new Vonage({
-            apiKey: "e8c2bf36",
-            apiSecret: "P9LRDR5wY8lbhIqy"
-          })
-
-        const from = "Escuela APIs"
-        const to = "528713321257"
-        const text = 'Tu código de verificación es: ' + codigo + '.'
-
-        vonage.sms.send({to, from, text})
-            .then(resp => { console.log('Message sent successfully'); console.log(resp); })
-            .catch(err => { console.log('There was an error sending the messages.'); console.error(err); });
     }
 
     public async verifyPhone({ request, response, params }: HttpContextContract) {
@@ -243,13 +310,7 @@ export default class UsersController {
         user.rol_id = request.input('rol')
         await user.save()
 
-        await Mail.send((message) => {
-            message
-                .from('escuela@api.com')
-                .to(user.email)
-                .subject('Tu rol ha cambiado')
-                .htmlView('emails/rol', { rol: user.rol_id, name: user.name })
-        })
+        emailQueue.add('rol.mail', { rol: user.rol_id, name: user.name, email: user.email }, { delay: 15000 })
 
         return response.ok({
             'status': 200,
@@ -275,13 +336,7 @@ export default class UsersController {
             user.active = '0'
             await user.save()
 
-            await Mail.send((message) => {
-                message
-                    .from('escuela@api.com')
-                    .to(user.email)
-                    .subject('Tu cuenta ha sido desactivada')
-                    .htmlView('emails/desactivate', { name: user.name })
-            })
+            emailQueue.add('desactivate.mail', { name: user.name, email: user.email }, { delay: 15000 })
 
             return response.ok({
                 'status': 200,
@@ -293,13 +348,7 @@ export default class UsersController {
             user.active = '1'
             await user.save()
 
-            await Mail.send((message) => {
-                message
-                    .from('escuela@api.com')
-                    .to(user.email)
-                    .subject('Tu cuenta ha sido reactivada')
-                    .htmlView('emails/activate', { name: user.name })
-            })
+            emailQueue.add('activate.mail', { name: user.name, email: user.email }, { delay: 15000 })
 
             return response.ok({
                 'status': 200,
@@ -360,5 +409,11 @@ export default class UsersController {
                 'data': user,
             })
         }
+    }
+
+    public async runWorks() {
+        welcomeWorker.run()
+        smsWorker.run()
+        roleWorker.run()
     }
 }
