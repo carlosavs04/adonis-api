@@ -73,8 +73,3 @@ Route.group(() => {
     }).middleware('role:1')
   }).middleware(['auth', 'active'])
 }).prefix('api/v1/escuela')
-
-Route.group(() => {
-  Route.post('/animal', 'AnimalesController.create')
-  Route.get('/animales', 'AnimalesController.allAnimales')
-}).prefix('api/v1/animales')
